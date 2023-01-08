@@ -84,22 +84,60 @@
     </script>
 
     <script type="text/plain" id="default-elev-implementation">
-{
+ {
     init: function(elevators, floors) {
-        var elevator = elevators[0]; // Let's use the first elevator
 
-        // Whenever the elevator is idle (has no more queued destinations) ...
-        elevator.on("idle", function() {
-            // let's go to all the floors (or did we forget one?)
-            elevator.goToFloor(0);
-            elevator.goToFloor(1);
-        });
-    },
-    update: function(dt, elevators, floors) {
-        // We normally don't need to do anything here
+    var elevator = elevators[0]; 
+       
+    const solution =   createMachine({
+        "id": "m",
+        "initial": "IDLE",
+        "states": {
+          "IDLE": {
+            "on": {
+              "floor_button_press": {
+               "target": "FLOOR",
+                actions: "assignFloor"
+              },
+           }
+          },
+          "FLOOR": {
+            "always": {
+               "target": "IDLE",
+                actions: "goToFloor"
+           }
+          },
+        },
+         context: { floor: 0},
+         predictableActionArguments: true,
+         preserveActionOrder: true,
+        },
+    {
+    actions: {
+       assignFloor: assign({ floor: (context, event ) => event.payload }),
+       goToFloor: (context,_)=> { elevator.goToFloor(context.floor) }
     }
+
+   })
+
+     const mService = interpret(solution)
+                        .onTransition(state => { 
+                          console.log(state.value, state.context.floor)
+                        }) 
+                        .start() 
+
+     elevator.on("floor_button_pressed", function(floorNum) {
+           console.log(typeof floorNum, floorNum)
+           mService.send( {type:"floor_button_press", payload: floorNum})
+     })
+   
+    },
+
+    update: function(dt, elevators, floors) {}    
 }
+
     </script>
+<!--  
     <script type="text/plain" id="devtest-elev-implementation">
 {
     init: function(elevators, floors) {
@@ -132,7 +170,7 @@
     }
 }
     </script>
-
+-->
 
 </head>
 <body>
@@ -196,6 +234,17 @@
 
         ga('create', 'UA-56810935-1', 'auto');
         ga('send', 'pageview');
+    </script>
+
+    <!-- 
+         XState:
+         https://github.com/statelyai/xstate
+    -->
+
+    <script src="https://unpkg.com/xstate@4/dist/xstate.js"></script>
+
+    <script>
+        const { createMachine, actions, assign, interpret } = window.XState; 
     </script>
 </body>
 </html>
