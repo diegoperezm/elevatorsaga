@@ -84,57 +84,108 @@
     </script>
 
     <script type="text/plain" id="default-elev-implementation">
- {
-    init: function(elevators, floors) {
 
-    var elevator = elevators[0]; 
-       
-    const solution =   createMachine({
-        "id": "m",
-        "initial": "IDLE",
-        "states": {
-          "IDLE": {
-            "on": {
-              "floor_button_press": {
-               "target": "FLOOR",
-                actions: "assignFloor"
+     {
+         init: function(elevators, floors) {
+
+         const elevator    = elevators[0]; 
+         const [f0,f1,f2]  = floors
+
+         const sol =   createMachine({
+             id: "m",
+             initial: "IDLE",
+             on: {
+                 addTaskToQueue: {
+                   actions: "assignFloorToQueue",
+                 },
               },
-           }
-          },
-          "FLOOR": {
-            "always": {
-               "target": "IDLE",
-                actions: "goToFloor"
-           }
-          },
-        },
-         context: { floor: 0},
-         predictableActionArguments: true,
-         preserveActionOrder: true,
-        },
-    {
-    actions: {
-       assignFloor: assign({ floor: (context, event ) => event.payload }),
-       goToFloor: (context,_)=> { elevator.goToFloor(context.floor) }
-    }
+             states: {
+               IDLE: {
+                 always: {
+                   target: "PROCESSING",
+                   cond:  (context, event)=> (context.queue.length > 1)
+                }
+               },
+               PROCESSING: {
+                 entry: "processTask",
 
-   })
+                 on: {
+                   "done": {   
+                        target: "IDLE",
+                        actions: "deleteFirstTaskFromQueue" 
+                   } 
+                 }
 
-     const mService = interpret(solution)
-                        .onTransition(state => { 
-                          console.log(state.value, state.context.floor)
-                        }) 
-                        .start() 
+               }
+               },
+              context: { queue: [] },
+              predictableActionArguments: true,
+              preserveActionOrder: true,
+             }, 
+     
+             {
+               actions: {
+                 assignFloorToQueue: assign({ queue: (context,event)=> [...new Set(context.queue.concat(event.payload))] }),
+                 deleteFirstTaskFromQueue: assign({ queue: (context,event)=> {
+                   context.queue.shift()
+                   return context.queue 
+                 } }),
+                 processTask: (context,event) =>  {
+                     const nextF = context.queue[0]
+                     elevator.goToFloor(nextF,true)
+                     elevator.on("stopped_at_floor", function(floorNum) {
+                        if(floorNum ===  nextF) { 
+                          mService.send("done")
+                        }
+                     })
+                 }
+               }
+             })
+         
 
-     elevator.on("floor_button_pressed", function(floorNum) {
-           console.log(typeof floorNum, floorNum)
-           mService.send( {type:"floor_button_press", payload: floorNum})
-     })
-   
-    },
 
-    update: function(dt, elevators, floors) {}    
-}
+
+     
+          const mService = interpret(sol)
+                             .onTransition(state => { 
+                               console.log(state.value, 'queue', state.context.queue)
+                             }) 
+                             .start() 
+     
+          elevator.on("floor_button_pressed", function(floorNum) {
+                console.log('floor_button_pressed => ', typeof floorNum, floorNum)
+                mService.send( {type: "addTaskToQueue", payload: [floorNum]})
+          })
+    
+         f0.on("up_button_pressed", function() {
+           console.log('floor0 up button pressed') 
+           mService.send( {type: "addTaskToQueue", payload: [0,1]})
+         })
+
+         f1.on("up_button_pressed", function() {
+           console.log('floor1 up button pressed') 
+           mService.send( {type: "addTaskToQueue", payload: [1,2]})
+         })
+           
+         f1.on("down_button_pressed", function() {
+           console.log('floor1 down button pressed') 
+           mService.send( {type: "addTaskToQueue", payload: [1,0]})
+         })
+           
+         f2.on("down_button_pressed", function() {
+           console.log('floor2 down button pressed') 
+           mService.send( {type: "addTaskToQueue", payload: [2,1]})
+         })
+           
+
+ 
+         },
+         update: function(dt, elevators, floors) {}    
+     }
+     
+     
+     
+     
 
     </script>
 <!--  
