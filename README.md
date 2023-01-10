@@ -2,7 +2,12 @@ Elevator Saga
 ===================
 The elevator programming game
 
-[Play it now!](https://diegoperezm.github.io/elevatorsaga/)
+Original:
+
+[Play it now!](http://play.elevatorsaga.com/)
+
+This repo gh-pages:
+[gh-pages demo](https://diegoperezm.github.io/elevatorsaga/)
 
 
 Or [Run the unit tests](http://play.elevatorsaga.com/test/)
