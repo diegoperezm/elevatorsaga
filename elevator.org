@@ -1,5 +1,9 @@
 * queue
 
+The idea is implement this (or something similar):
+
+https://twitter.com/BDevessier/status/1600633645768871936
+
 #+begin_src js
 createMachine({
   id: "Queue",
@@ -47,473 +51,115 @@ createMachine({
 );
 #+end_src
 
-
-* first test
-
-#+begin_src js
-{
-    init: function(elevators, floors) {
-
-     var elevator = elevators[0]; 
-
-
-    const sol =   createMachine({
-        "id": "m",
-        "initial": "idle",
-        "states": {
-          "idle": {
-            "on": {
-              "FLOOR_BUTTON_ZERO": {
-                "actions": ["toFloor"],
-                "target": "floorZero"
-              },
-               "FLOOR_BUTTON_ONE": {
-                "actions": ["toFloor"],
-                "target": "floorOne"
-              },
-                "FLOOR_BUTTON_TWO": {
-                "actions": ["toFloor"],
-                "target": "floorTwo"
-              },
-            }
-          },
-
-          "floorZero": {},
-          "floorOne": {},
-          "floorTwo": {},
-
-        }
-      ,
-         context: {},
-         predictableActionArguments: true,
-         preserveActionOrder: true,
-        }, {
-            actions: {
-              toFloor: (context, event) => {
-                  console.log("toFloor", event)
-                  elevator.goToFloor(2) 
-               } 
-            }
-          }
-        )
-
-
-     const mService = interpret(sol).start() 
-
-      elevator.on("floor_button_pressed", function(floorNum) {
-         console.log(typeof floorNum, floorNum )
-        
-          switch(floorNum) {
-              case 0: 
-               mService.send("FLOOR_BUTTON_ZERO")
-              break;
-
-              case 1:
-               mService.send("FLOOR_BUTTON_ONE")
-              break;
-
-              case 2:
-               mService.send("FLOOR_BUTTON_TWO")
-              break;
-           }
-       
-     })
-   
-
-
-    },
-
-    update: function(dt, elevators, floors) {}    
-}
-
-#+end_src
-
-
-* second 
-
-
-#+begin_src js
-{
-    init: function(elevators, floors) {
-
-    var elevator = elevators[0]; 
-
-    const sol =   createMachine({
-        "id": "m",
-        "initial": "IDLE",
-        "states": {
-          "IDLE": {
-            "on": {
-              "floor_button_press": {
-               "target": "IDLE",
-                actions: "toFloor"
-              },
-           }
-          },
-        },
-         context: {},
-         predictableActionArguments: true,
-         preserveActionOrder: true,
-        },
-{
-    actions: {
-       toFloor: (context,event)=> {elevator.goToFloor(event.payload)}
-    }
-}
-
-)
-
-     const mService = interpret(sol).start() 
-
-     elevator.on("floor_button_pressed", function(floorNum) {
-           console.log(typeof floorNum, floorNum)
-           mService.send({type:"floor_button_press", payload: floorNum})
-     })
-   
-    },
-
-    update: function(dt, elevators, floors) {}    
-}
-#+end_src
-
-
-
-* third
-
-Sometimes pass the first challenge (not always).
-elevator has a =destinationQueue=
-
-#+begin_src js
-{
-    init: function(elevators, floors) {
-
-    var elevator = elevators[0]; 
-       
-    const solution =   createMachine({
-        "id": "m",
-        "initial": "IDLE",
-        "states": {
-          "IDLE": {
-            "on": {
-              "floor_button_press": {
-               "target": "FLOOR",
-                actions: "assignFloor"
-              },
-           }
-          },
-          "FLOOR": {
-            "always": {
-               "target": "IDLE",
-                actions: "goToFloor"
-           }
-          },
-        },
-         context: { floor: 0},
-         predictableActionArguments: true,
-         preserveActionOrder: true,
-        },
-    {
-    actions: {
-       assignFloor: assign({ floor: (context, event ) => event.payload }),
-       goToFloor: (context,_)=> { elevator.goToFloor(context.floor) }
-    }
-
-   })
-
-     const mService = interpret(solution)
-                        .onTransition(state => { 
-                          console.log(state.value, state.context.floor)
-                        }) 
-                        .start() 
-
-     elevator.on("floor_button_pressed", function(floorNum) {
-           console.log(typeof floorNum, floorNum)
-           mService.send( {type:"floor_button_press", payload: floorNum})
-     })
-   
-    },
-
-    update: function(dt, elevators, floors) {}    
-}
-#+end_src
-
-
-
-* machine queue
-#+begin_src js
-{
-    init: function(elevators, floors) {
-
-    var elevator = elevators[0]; 
-       
-    const sol =   createMachine({
-        "id": "m",
-        "initial": "IDLE",
-        "states": {
-          "on": {
-            "addTaskToQueue": {
-              "actions": "assignFloorToQueue",
-            },
-          },
-          "IDLE": {
-            "on": {
-              "floor_button_press": {
-               "target": "FLOOR",
-                actions: "assignFloor"
-              },
-           }
-          },
-          "FLOOR": {
-            "always": {
-               "target": "IDLE",
-                "actions": "goToFloor"
-           }
-          },
-        },
-         context: { queue: []},
-         predictableActionArguments: true,
-         preserveActionOrder: true,
-        },
-    {
-    actions: {
-       assignFloorToQueue: assign({ queue: (context, event ) => event.payload }),
-
-       assignFloor: assign({ floor: (context, event ) => event.payload }),
-
-       goToFloor: (context,_)=> { elevator.goToFloor(context.floor) }
-    }
-
-   })
-
-     const mService = interpret(sol)
-                        .onTransition(state => { 
-                          console.log(state.value, state.context.floor)
-                        }) 
-                        .start() 
-
-     elevator.on("floor_button_pressed", function(floorNum) {
-           console.log(typeof floorNum, floorNum)
-           mService.send( {type:"floor_button_press", payload: floorNum})
-     })
-   
-    },
-
-    update: function(dt, elevators, floors) {}    
-}
-#+end_src
-
 * index.html
 
-#+name: elevatormachine0 
-#+begin_src js
-{
-    init: function(elevators, floors) {
-
-    var elevator = elevators[0]; 
-       
-    const solution =   createMachine({
-        "id": "m",
-        "initial": "IDLE",
-        "states": {
-          "IDLE": {
-            "on": {
-              "floor_button_press": {
-               "target": "FLOOR",
-                actions: "assignFloor"
-              },
-           }
-          },
-          "FLOOR": {
-            "always": {
-               "target": "IDLE",
-                actions: "goToFloor"
-           }
-          },
-        },
-         context: { floor: 0},
-         predictableActionArguments: true,
-         preserveActionOrder: true,
-        },
-    {
-    actions: {
-       assignFloor: assign({ floor: (context, event ) => event.payload }),
-       goToFloor: (context,_)=> { elevator.goToFloor(context.floor) }
-    }
-
-   })
-
-     const mService = interpret(solution)
-                        .onTransition(state => { 
-                          console.log(state.value, state.context.floor)
-                        }) 
-                        .start() 
-
-     elevator.on("floor_button_pressed", function(floorNum) {
-           console.log(typeof floorNum, floorNum)
-           mService.send( {type:"floor_button_press", payload: floorNum})
-     })
-   
-    },
-
-    update: function(dt, elevators, floors) {}    
-}
-#+end_src
-
-https://en.wikipedia.org/wiki/Priority_queue  
-
-bk
-#+begin_src js  
-{
-    init: function(elevators, floors) {
-
-    var elevator = elevators[0]; 
-       
-    const sol =   createMachine({
-        id: "m",
-        initial: "IDLE",
-        states: {
-          on: {
-            addTaskToQueue: {
-              actions: "assignFloorToQueue",
-            },
-          },
-          IDLE: {
-            always: {
-              target: "PROCESSING",
-              cond:  "taskAvailable"
-           }
-          },
-          PROCESSING: {
-            invoke: {
-              src: "processTask",
-              onDone: [
-                {
-                   target: "IDLE",
-                   actions: "deleteFirstTaskFromQueue"
-                 }
-              ]
-            }
-          },
-        },
-         context: { queue: []},
-         predictableActionArguments: true,
-         preserveActionOrder: true,
-        },
-    {
-    actions: {
-       assignFloorToQueue: assign({
-           queue: (context, event ) => { 
-             // TODO: sort queue using elevator.on("stopped_at_floor", ...) ? 
-                 return context.queue.concat(event.payload) 
-          }
-       }),
-      deleteFirstTaskFromQueue: assign({
-           queue: (context, _) => { 
-                   context.queue.shift() 
-                   return context.queue
-          }
-       }),
-
-      // always the first element of queue (queue[0]) 
-       goToFloor: (context,_)=> { elevator.goToFloor(context.queue[0]) }
-
-    }
-   },
-   {
-      guards: {
-        taskAvailable: (context,_) =>  {context.queue.length > 0}
-      }
-   }
-
-
-)
-
-     const mService = interpret(sol)
-                        .onTransition(state => { 
-                          console.log(state.value, state.context.floor)
-                        }) 
-                        .start() 
-
-     elevator.on("floor_button_pressed", function(floorNum) {
-           console.log(typeof floorNum, floorNum)
-           mService.send( {type: "addTaskToQueue", payload: floorNum})
-     })
-   
-    },
-
-    update: function(dt, elevators, floors) {}    
-}
-
-
-
-
-#+end_src
-
-
 #+name: elevatormachinequeue
-#+begin_src js  
+#+begin_src js
+
 {
-    init: function(elevators, floors) {
 
-    let elevator = elevators[0]; 
-       
-    const sol =   createMachine({
-        id: "m",
-        initial: "IDLE",
-        on: {
-            addTaskToQueue: {
-              actions: "assignFloorToQueue",
-            },
-         },
-        states: {
-         
-          IDLE: {
-            always: {
-              cond:  ["taskAvailable"],
-              target: "PROCESSING"
-           }
-          },
-          PROCESSING: {}
-          },
-         context: { queue: [] },
-         predictableActionArguments: true,
-         preserveActionOrder: true,
-        }, 
+/*
+ This one is only passing (most of the time) the first challenge
+ (challenge #1). Idea from:
+ https://twitter.com/BDevessier/status/1600633645768871936
+,*/
 
-        {
-          actions: {
-            assignFloorToQueue: assign({ queue: (context,event)=> context.queue.concat(event.payload)})
-          }
-        },
-        { 
-          guards: { 
-             taskAvailable: (context,event) => false 
-          } 
+      init: function(elevators, floors) {
 
-        })
+         const elevator    = elevators[0]; 
+         var currentState
+
+         const sol =   createMachine({
+             id: "elevatorSaga",
+             initial: "IDLE",
+             on: {
+                 addTaskToQueue: {
+                   actions: "assignFloorToQueue",
+                 },
+              },
+             states: {
+               IDLE: {
+                 always: {
+                   target: "PROCESSING",
+                   cond:  (context, event) => context.queue.length > 0
+                }
+               },
+               PROCESSING: {
+                 entry: "processTask",
+                 on: {
+                   "done": {   
+                        target: "IDLE",
+                        actions: "deleteFirstTaskFromQueue" 
+                   } 
+                 }
+
+               }
+               },
+              context: { queue: [] },
+              predictableActionArguments: true,
+              preserveActionOrder: true,
+             }, 
+     
+             {
+               actions: {
+                 assignFloorToQueue: assign({ 
+                       queue: (context,event)=> [...new Set(context.queue.concat(event.payload))]
+                  }),
+
+                 deleteFirstTaskFromQueue: assign({ 
+                   queue: (context,_)=> {
+                                          context.queue.shift()
+                                          return context.queue 
+                          }
+                 }),
+
+                 processTask: (context,_) =>  {
+                     const nextFloor = context.queue[0]
+                     elevator.goToFloor(nextFloor,true)
+
+                     elevator.on("stopped_at_floor", function(floorNum) {
+                        if(floorNum ===  nextFloor && currentState === 'PROCESSING') { 
+                           //console.log('stopped_at_floor => ', currentState )
+                          // TODO: change this 
+                           mService.send("done")
+                        }
+                     })
+                 }
+               }
+             })
     
+         const mService = interpret(sol)
+                             .onTransition(state => { 
+                               // console.log(state.event.type, state.value, 'queue: ', state.context.queue)
+                               // console.table({state: state.value, queue: state.context.queue})
+                               // https://github.com/statelyai/xstate/discussions/1294
+                               currentState = state.value;
 
-     const mService = interpret(sol)
-                        .onTransition(state => { 
-                          console.log(state.value, state.context.queue)
-                        }) 
-                        .start() 
+                             }) 
+                             .start() 
 
-     elevator.on("floor_button_pressed", function(floorNum) {
-           console.log(typeof floorNum, floorNum)
-           mService.send( {type: "addTaskToQueue", payload: floorNum})
-     })
-   
-    },
+         elevator.on("floor_button_pressed", function(floorNum) {
+               // console.log('floor_button_pressed => ', typeof floorNum, floorNum)
+                mService.send( {type: "addTaskToQueue", payload: [floorNum]})
+          })
+ 
+         floors.forEach((floor) => floor.on("up_button_pressed", function(){
+                 const floorNum = floor.floorNum()
+               //  console.log(`floor${floorNum} up button pressed`) 
+                 mService.send({ type: "addTaskToQueue", payload: [floorNum, (floorNum + 1)]})
+                }))
 
-    update: function(dt, elevators, floors) {}    
-}
+         floors.forEach((floor) => floor.on("down_button_pressed", function(){
+                 const floorNum = floor.floorNum()
+                // console.log(`floor${floorNum} down button pressed`) 
+                 mService.send({ type: "addTaskToQueue", payload: [floorNum, (floorNum - 1)]})
+                }))
+         },
 
-
-
+      update: function(dt, elevators, floors) {}    
+     }
 
 #+end_src
-
 
 
 #+begin_src html :noweb yes :tangle ./index.html
@@ -607,7 +253,7 @@ bk
      <<elevatormachinequeue>>
 
     </script>
-<!--  
+
     <script type="text/plain" id="devtest-elev-implementation">
 {
     init: function(elevators, floors) {
@@ -640,7 +286,6 @@ bk
     }
 }
     </script>
--->
 
 </head>
 <body>
@@ -720,3 +365,266 @@ bk
 </html>
 
 #+end_src
+
+
+
+
+
+* testing
+** first test
+
+#+begin_src js
+{
+    init: function(elevators, floors) {
+
+     var elevator = elevators[0]; 
+
+
+    const sol =   createMachine({
+        "id": "m",
+        "initial": "idle",
+        "states": {
+          "idle": {
+            "on": {
+              "FLOOR_BUTTON_ZERO": {
+                "actions": ["toFloor"],
+                "target": "floorZero"
+              },
+               "FLOOR_BUTTON_ONE": {
+                "actions": ["toFloor"],
+                "target": "floorOne"
+              },
+                "FLOOR_BUTTON_TWO": {
+                "actions": ["toFloor"],
+                "target": "floorTwo"
+              },
+            }
+          },
+
+          "floorZero": {},
+          "floorOne": {},
+          "floorTwo": {},
+
+        }
+      ,
+         context: {},
+         predictableActionArguments: true,
+         preserveActionOrder: true,
+        }, {
+            actions: {
+              toFloor: (context, event) => {
+                  console.log("toFloor", event)
+                  elevator.goToFloor(2) 
+               } 
+            }
+          }
+        )
+
+
+     const mService = interpret(sol).start() 
+
+      elevator.on("floor_button_pressed", function(floorNum) {
+         console.log(typeof floorNum, floorNum )
+        
+          switch(floorNum) {
+              case 0: 
+               mService.send("FLOOR_BUTTON_ZERO")
+              break;
+
+              case 1:
+               mService.send("FLOOR_BUTTON_ONE")
+              break;
+
+              case 2:
+               mService.send("FLOOR_BUTTON_TWO")
+              break;
+           }
+       
+     })
+   
+
+
+    },
+
+    update: function(dt, elevators, floors) {}    
+}
+
+#+end_src
+
+
+** second 
+
+
+#+begin_src js
+{
+    init: function(elevators, floors) {
+
+    var elevator = elevators[0]; 
+
+    const sol =   createMachine({
+        "id": "m",
+        "initial": "IDLE",
+        "states": {
+          "IDLE": {
+            "on": {
+              "floor_button_press": {
+               "target": "IDLE",
+                actions: "toFloor"
+              },
+           }
+          },
+        },
+         context: {},
+         predictableActionArguments: true,
+         preserveActionOrder: true,
+        },
+{
+    actions: {
+       toFloor: (context,event)=> {elevator.goToFloor(event.payload)}
+    }
+}
+
+)
+
+     const mService = interpret(sol).start() 
+
+     elevator.on("floor_button_pressed", function(floorNum) {
+           console.log(typeof floorNum, floorNum)
+           mService.send({type:"floor_button_press", payload: floorNum})
+     })
+   
+    },
+
+    update: function(dt, elevators, floors) {}    
+}
+#+end_src
+
+
+
+** third
+
+Sometimes pass the first challenge (not always).
+elevator has a =destinationQueue=
+
+#+begin_src js
+{
+    init: function(elevators, floors) {
+
+    var elevator = elevators[0]; 
+       
+    const solution =   createMachine({
+        "id": "m",
+        "initial": "IDLE",
+        "states": {
+          "IDLE": {
+            "on": {
+              "floor_button_press": {
+               "target": "FLOOR",
+                actions: "assignFloor"
+              },
+           }
+          },
+          "FLOOR": {
+            "always": {
+               "target": "IDLE",
+                actions: "goToFloor"
+           }
+          },
+        },
+         context: { floor: 0},
+         predictableActionArguments: true,
+         preserveActionOrder: true,
+        },
+    {
+    actions: {
+       assignFloor: assign({ floor: (context, event ) => event.payload }),
+       goToFloor: (context,_)=> { elevator.goToFloor(context.floor) }
+    }
+
+   })
+
+     const mService = interpret(solution)
+                        .onTransition(state => { 
+                          console.log(state.value, state.context.floor)
+                        }) 
+                        .start() 
+
+     elevator.on("floor_button_pressed", function(floorNum) {
+           console.log(typeof floorNum, floorNum)
+           mService.send( {type:"floor_button_press", payload: floorNum})
+     })
+   
+    },
+
+    update: function(dt, elevators, floors) {}    
+}
+#+end_src
+
+
+
+** machine queue
+#+begin_src js
+{
+    init: function(elevators, floors) {
+
+    var elevator = elevators[0]; 
+       
+    const sol =   createMachine({
+        "id": "m",
+        "initial": "IDLE",
+        "states": {
+          "on": {
+            "addTaskToQueue": {
+              "actions": "assignFloorToQueue",
+            },
+          },
+          "IDLE": {
+            "on": {
+              "floor_button_press": {
+               "target": "FLOOR",
+                actions: "assignFloor"
+              },
+           }
+          },
+          "FLOOR": {
+            "always": {
+               "target": "IDLE",
+                "actions": "goToFloor"
+           }
+          },
+        },
+         context: { queue: []},
+         predictableActionArguments: true,
+         preserveActionOrder: true,
+        },
+    {
+    actions: {
+       assignFloorToQueue: assign({ queue: (context, event ) => event.payload }),
+
+       assignFloor: assign({ floor: (context, event ) => event.payload }),
+
+       goToFloor: (context,_)=> { elevator.goToFloor(context.floor) }
+    }
+
+   })
+
+     const mService = interpret(sol)
+                        .onTransition(state => { 
+                          console.log(state.value, state.context.floor)
+                        }) 
+                        .start() 
+
+     elevator.on("floor_button_pressed", function(floorNum) {
+           console.log(typeof floorNum, floorNum)
+           mService.send( {type:"floor_button_press", payload: floorNum})
+     })
+   
+    },
+
+    update: function(dt, elevators, floors) {}    
+}
+#+end_src
+
+
+
+
