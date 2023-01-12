@@ -51,7 +51,101 @@ createMachine({
 );
 #+end_src
 
-* index.html
+
+
+* Elevator Saga
+
+** Intro
+
+#+begin_quote
+About the game
+
+This is a game of programming!
+Your task is to program the movement of elevators, by writing a program in JavaScript.
+
+*The goal is to transport people in an efficient manner.*
+
+Depending on how well you do it, you can progress through the ever more difficult challenges.
+Only the very best programs will be able to complete all the challenges. 
+#+end_quote
+
+
+#+begin_quote
+Your code must declare an object containing at least two functions called init and update. Like this:
+#+end_quote
+
+
+#+begin_src js
+{
+    init: function(elevators, floors) {
+        // Do stuff with the elevators and floors, which are both arrays of objects
+    },
+    update: function(dt, elevators, floors) {
+        // Do more stuff with the elevators and floors
+        // dt is the number of game seconds that passed since the last time update was called
+    }
+}
+#+end_src
+
+
+#+begin_quote
+These functions will then be called by the game during the challenge.
+init will be called when the challenge starts, and update repeatedly during the challenge.
+
+Normally you will put most of your code in the init function, to set up event listeners and logic. 
+#+end_quote
+
+
+
+
+** API documentation
+
+Elevator object:
+
+| Elevator object  | type     | Explanation                                                                          |
+|------------------+----------+--------------------------------------------------------------------------------------|
+| goToFloor        | function | *Queue* the elevator to go to specified floor number.                                |
+|                  |          | If you specify true as second argument, the elevator will go to that floor directly, |
+|                  |          | and then go to any other queued floors.                                              |
+|------------------+----------+--------------------------------------------------------------------------------------|
+| currentFloor     | function | Gets the floor number that the elevator currently is on.                             |
+|------------------+----------+--------------------------------------------------------------------------------------|
+| destinationQueue | array    | The *current destination queue*, meaning the floor numbers the elevator is scheduled |
+|                  |          | to go to.Can be modified and emptied if desired.                                     |
+|                  |          | Note that you need to call checkDestinationQueue()                                   |
+|                  |          | for the change to take effect immediately.                                           |
+|                  |          |                                                                                      |
+|------------------+----------+--------------------------------------------------------------------------------------|
+
+Events:
+
+| Event                | Object   | Explanation                                                                         |
+|----------------------+----------+-------------------------------------------------------------------------------------|
+| floor_button_pressed | elevator | Triggered when a passenger has                                                      |
+|                      |          | pressed a button inside the elevator.                                               |
+|----------------------+----------+-------------------------------------------------------------------------------------|
+| up_button_pressed    | floor    | Triggered when someone has                                                          |
+|                      |          | pressed the up button at a floor.                                                   |
+|                      |          | Note that passengers will press the button again if they fail to enter an elevator. |
+|----------------------+----------+-------------------------------------------------------------------------------------|
+| down_button_pressed  | floor    | Triggered when someone has                                                          |
+|                      |          | pressed the down button at a floor.                                                 |
+|                      |          | Note that passengers will press the button again if they fail to enter an elevator. |
+|----------------------+----------+-------------------------------------------------------------------------------------|
+
+** Comments
+
+
+
+
+
+** Other people solutions 
+
+
+https://github.com/magwo/elevatorsaga/wiki/Solution-by-DeSjoerd
+
+
+* Code  (index.html)
 
 #+name: elevatormachinequeue
 #+begin_src js
@@ -365,8 +459,6 @@ createMachine({
 </html>
 
 #+end_src
-
-
 
 
 

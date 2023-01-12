@@ -111,29 +111,43 @@
                     IDLE: {
                       always: {
                         target: "PROCESSING",
-                        cond:  (context, event) => context.queue.length > 0
+                        cond: "taskAvailable" 
                      }
                     },
                     PROCESSING: {
-                      entry: "processTask",
-                      on: {
-                        "done": {   
+                      invoke: {
+                          src: "processTask",
+                          onDone: [
+                            {
                              target: "IDLE",
                              actions: "deleteFirstTaskFromQueue" 
-                        } 
-                      }
-     
-                    }
+                             }
+                          ]
+                      },
+                     }
                     },
                    context: { queue: [] },
                    predictableActionArguments: true,
                    preserveActionOrder: true,
                   }, 
-          
                   {
+                    services: {
+                      processTask: (context) =>  processTask(context.queue[0])             
+                    },
+                    guards: {
+                        "taskAvailable": (context, event) => context.queue.length > 0
+                    },
                     actions: {
                       assignFloorToQueue: assign({ 
-                            queue: (context,event)=> [...new Set(context.queue.concat(event.payload))]
+                            queue: (context,event)=> [...new Set(context
+                                                                    .queue
+                                                                    .concat([
+                                                                             {
+                                                                               floorNumber: event.payload,
+                                                                               origin: event.origin
+                                                                             }
+                                                                     ]))
+                                                     ]
                        }),
      
                       deleteFirstTaskFromQueue: assign({ 
@@ -143,46 +157,46 @@
                                }
                       }),
      
-                      processTask: (context,_) =>  {
-                          const nextFloor = context.queue[0]
-                          elevator.goToFloor(nextFloor,true)
-     
-                          elevator.on("stopped_at_floor", function(floorNum) {
-                             if(floorNum ===  nextFloor && currentState === 'PROCESSING') { 
-                                //console.log('stopped_at_floor => ', currentState )
-                               // TODO: change this 
-                                mService.send("done")
-                             }
-                          })
-                      }
                     }
                   })
-         
+        
+              const processTask = (floor) => { 
+                   // TODO: test    
+                  return  new Promise((resolve,reject) => resolve(elevator.goToFloor(floor.floorNumber)))
+              }
+
               const mService = interpret(sol)
                                   .onTransition(state => { 
-                                    // console.log(state.event.type, state.value, 'queue: ', state.context.queue)
-                                    // console.table({state: state.value, queue: state.context.queue})
-                                    // https://github.com/statelyai/xstate/discussions/1294
-                                    currentState = state.value;
+
+                                     let currentFloor = elevator.currentFloor()
+
+                                     console.log('------------------------')
+                                     console.log('current floor: ', currentFloor)
+                                     console.log(state.event.type, state.value,)
+                                     console.log('queue => ', JSON.stringify(state.context.queue,null, " "))
+                                     console.log('------------------------')
+
+                                     // https://github.com/statelyai/xstate/discussions/1294
+                                     currentState = state.value;
      
                                   }) 
                                   .start() 
      
               elevator.on("floor_button_pressed", function(floorNum) {
-                    // console.log('floor_button_pressed => ', typeof floorNum, floorNum)
-                     mService.send( {type: "addTaskToQueue", payload: [floorNum]})
+                     console.log('floor_button_pressed => ', typeof floorNum, floorNum)
+                     mService.send( {type: "addTaskToQueue", payload: floorNum, origin: "elevator_button"})
                })
       
               floors.forEach((floor) => floor.on("up_button_pressed", function(){
                       const floorNum = floor.floorNum()
-                    //  console.log(`floor${floorNum} up button pressed`) 
-                      mService.send({ type: "addTaskToQueue", payload: [floorNum, (floorNum + 1)]})
+                      console.log(`floor${floorNum} up button pressed`) 
+                      mService.send({ type: "addTaskToQueue", payload: floorNum, origin: "up_button"})
                      }))
      
               floors.forEach((floor) => floor.on("down_button_pressed", function(){
                       const floorNum = floor.floorNum()
-                     // console.log(`floor${floorNum} down button pressed`) 
-                      mService.send({ type: "addTaskToQueue", payload: [floorNum, (floorNum - 1)]})
+                      console.log(`floor${floorNum} down button pressed`) 
+                      mService.send({ type: "addTaskToQueue", payload: floorNum, origin: "down_button"})
                      }))
               },
      
@@ -297,7 +311,7 @@
     <script src="https://unpkg.com/xstate@4/dist/xstate.js"></script>
 
     <script>
-        const { createMachine, actions, assign, interpret } = window.XState; 
+        const { createMachine, actions, assign, send, interpret } = window.XState; 
     </script>
 </body>
 </html>
